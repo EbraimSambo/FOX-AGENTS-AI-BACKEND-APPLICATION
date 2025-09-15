@@ -1,0 +1,9 @@
+version: '3.9'
+services:
+  auth-odonto:
+    build: .
+    command: pnpm start
+    ports:
+      - "3005:3005" 
+    env_file:
+      - .env
