@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ChatService } from '../../domain/service/chat.service';
 import { Chat, Content, Role } from '../../domain/entities/content.entity';
 import { ChatRepository } from '../../domain/repository/chat.repository';
 import { ModelService } from 'src/features/model/domain/services/model-service';
 import { ModelEnum } from 'src/features/model/domain/entity/model.entity';
 import { DataPagination, Pagination } from 'src/shared/domain/pagination.core';
+import { User } from 'src/features/user/domain/entity/user.entity';
 
 @Injectable()
 export class ChatServiceImpl implements ChatService {
@@ -17,19 +18,27 @@ export class ChatServiceImpl implements ChatService {
         return await this.repository.findOneChatByUUID(uuid);
     }
 
-    async chatFlow(data: { chatUUID: string; prompt: string; }): Promise<{ chat: Chat; messages: Array<Content>; }> {
-        let chat: Chat;
+    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string }): Promise<{ chat: Chat; messages: Array<Content>; }> {
+        let userId: number | undefined;
+        let chat: Chat
+        if (data.userUUID) {
+            const user = await this.repository.getUser(data.userUUID)
+                ?? await this.repository.createtUser(data.userUUID);
+            userId = user.id;
+        }
 
         const existingChat = await this.repository.findOneChatByUUID(data.chatUUID);
 
         if (!existingChat) {
             chat = await this.repository.createChat({
                 title: "Vamos a isso",
-                uuid: data.chatUUID
+                uuid: data.chatUUID,
+                userId
             });
         } else {
             chat = existingChat;
         }
+
         const messages = await this.repository.findAllMessagesByChatIdAndUserId(chat.id)
         messages.reverse()
         const formattedChatHistory = messages.map(msg => ({
@@ -81,5 +90,15 @@ export class ChatServiceImpl implements ChatService {
             totalElements: 0,
             totalPages: 1
         }
+    }
+
+    async findAllchats(data: { pagination: DataPagination; userUUID: string; name?: string; }): Promise<Pagination<Chat>> {
+        const user = await this.repository.getUser(data.userUUID)
+        if(!user) throw new NotFoundException("USER NOT FOUND");
+
+        return await this.repository.findAllchats({
+            ...data,
+            userId: user.id
+        })
     }
 }

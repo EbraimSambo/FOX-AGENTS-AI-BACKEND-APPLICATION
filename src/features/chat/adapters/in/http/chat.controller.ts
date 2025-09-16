@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
 import { ChatService } from 'src/features/chat/domain/service/chat.service';
 import { ChatFlowDTo } from './dto/flow-chat.dto';
 
@@ -8,16 +8,35 @@ export class ChatController {
         private chatService: ChatService
     ) { }
 
+    @Get()
+    async findAllchats(
+        @Query("page") page: string,
+        @Query("limit") limit: string,
+        @Headers("user-x-uuid") userUUID: string,
+
+    ) {
+        return await this.chatService.findAllchats({
+            userUUID,
+            pagination: {
+                limit: limit ? 40 : +limit,
+                page: page ? 1 : +page
+            }
+        })
+    }
+
     @Post("/:uuid")
     async flow(
         @Body() body: ChatFlowDTo,
-        @Param("uuid") uuid: string
+        @Param("uuid") uuid: string,
+        @Headers("user-x-uuid") userUUID?: string
     ) {
         return await this.chatService.chatFlow({
             chatUUID: uuid,
-            prompt: body.prompt
+            prompt: body.prompt,
+            userUUID
         })
     }
+
 
     @Get("messages/:uuid")
     async findAllMessages(
