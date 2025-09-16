@@ -47,6 +47,7 @@ export class ChatServiceImpl implements ChatService {
         }));
 
         formattedChatHistory.push({ content: data.prompt, role: "user" });
+        formattedChatHistory.reverse();
         const response = await this.modelService.generateResponse({
             messages: [...formattedChatHistory],
             model: ModelEnum.GEMINI,
