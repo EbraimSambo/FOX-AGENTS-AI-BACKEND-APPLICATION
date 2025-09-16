@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
-import { Items } from 'openai/resources/conversations/items';
 import { Chat, Content } from 'src/features/chat/domain/entities/content.entity';
 import { ChatRepository } from 'src/features/chat/domain/repository/chat.repository';
 import { User } from 'src/features/user/domain/entity/user.entity';
@@ -49,7 +48,6 @@ export class ChatRepositoryImpl implements ChatRepository {
         return await this.databaseService.db.query.messagesTable.findMany({
             where: (messages, { eq, and }) => and(
                 eq(messages.chatId, chatId),
-                // eq(messages.userId, userId)
             ),
             orderBy: (messages, { desc }) => desc(messages.createdAt),
             limit: 30,
@@ -64,7 +62,7 @@ export class ChatRepositoryImpl implements ChatRepository {
             const [rows, total] = await Promise.all([
                 tx.query.messagesTable.findMany({
                     where: (elements, { and, eq }) => and(
-                        eq(elements.chatId, chatId)
+                        eq(elements.chatId, chatId),
                     ),
                     limit,
                     offset
@@ -94,8 +92,9 @@ export class ChatRepositoryImpl implements ChatRepository {
         return await this.databaseService.db.transaction(async (tx) => {
             const [rows, total] = await Promise.all([
                 tx.query.chatsTable.findMany({
-                    where: (elements, { and, eq }) => and(
-                        eq(elements.userId, userId)
+                    where: (elements, { and, eq,sql, }) => and(
+                        eq(elements.userId, userId),
+                        data.name ? sql`LOWER(${elements.title}) LIKE LOWER(${`%${data.name}%`})` : undefined
                     ),
                     limit,
                     offset

@@ -13,14 +13,16 @@ export class ChatController {
         @Query("page") page: string,
         @Query("limit") limit: string,
         @Headers("user-x-uuid") userUUID: string,
+        @Query("name") name: string
 
     ) {
         return await this.chatService.findAllchats({
             userUUID,
             pagination: {
                 limit: limit ? 40 : +limit,
-                page: page ? 1 : +page
-            }
+                page: page ? 1 : +page,
+            },
+            name
         })
     }
 
