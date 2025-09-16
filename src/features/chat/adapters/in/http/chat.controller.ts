@@ -30,12 +30,14 @@ export class ChatController {
     async flow(
         @Body() body: ChatFlowDTo,
         @Param("uuid") uuid: string,
-        @Headers("user-x-uuid") userUUID?: string
+        @Headers("user-x-uuid") userUUID?: string,
+        @Headers("user-x-name") userName?: string,
     ) {
         return await this.chatService.chatFlow({
             chatUUID: uuid,
             prompt: body.prompt,
-            userUUID
+            userUUID,
+            name: userName
         })
     }
 

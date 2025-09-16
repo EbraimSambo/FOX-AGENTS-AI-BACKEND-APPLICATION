@@ -6,7 +6,8 @@ export abstract class ChatService {
     abstract chatFlow(data: {
         chatUUID: string;
         prompt: string,
-        userUUID?: string
+        userUUID?: string,
+        name?: string
     }
     ): Promise<{
         chat: Chat
