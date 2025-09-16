@@ -37,7 +37,7 @@ export class ChatController {
             chatUUID: uuid,
             prompt: body.prompt,
             userUUID,
-            name: userName
+            username: userName
         })
     }
 

@@ -17,7 +17,7 @@ export class ChatServiceImpl implements ChatService {
         return await this.repository.findOneChatByUUID(uuid);
     }
 
-    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string, name?: string }): Promise<{ chat: Chat; messages: Array<Content>; }> {
+    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string, username?: string }): Promise<{ chat: Chat; messages: Array<Content>; }> {
         let userId: number | undefined;
         let chat: Chat
         if (data.userUUID) {
@@ -50,7 +50,7 @@ export class ChatServiceImpl implements ChatService {
         const response = await this.modelService.generateResponse({
             messages: [...formattedChatHistory],
             model: ModelEnum.GEMINI,
-            username: data.name
+            username: data.username
         })
 
         const aiMessageData: Omit<Content, "uuid">[] = [

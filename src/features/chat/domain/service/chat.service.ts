@@ -7,7 +7,7 @@ export abstract class ChatService {
         chatUUID: string;
         prompt: string,
         userUUID?: string,
-        name?: string
+        username?: string
     }
     ): Promise<{
         chat: Chat
