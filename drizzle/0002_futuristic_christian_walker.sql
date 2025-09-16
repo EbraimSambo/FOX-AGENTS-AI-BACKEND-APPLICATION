@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "ref" SET DATA TYPE varchar;

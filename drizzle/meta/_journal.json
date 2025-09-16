@@ -15,6 +15,13 @@
       "when": 1757681484241,
       "tag": "0001_opposite_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1757985962792,
+      "tag": "0002_futuristic_christian_walker",
+      "breakpoints": true
     }
   ]
 }
