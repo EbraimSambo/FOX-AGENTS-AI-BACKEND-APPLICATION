@@ -1,5 +1,6 @@
 import { DataPagination, Pagination } from "src/shared/domain/pagination.core";
 import { Chat, Content } from "../entities/content.entity";
+import { ModelEnum } from "src/features/model/domain/entity/model.entity";
 
 export abstract class ChatService {
     abstract findOneChatByUUID(uuid: string): Promise<Chat | null>
@@ -8,6 +9,7 @@ export abstract class ChatService {
         prompt: string,
         userUUID?: string,
         username?: string
+        model?: ModelEnum
     }
     ): Promise<{
         chat: Chat

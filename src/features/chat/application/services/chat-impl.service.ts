@@ -17,7 +17,7 @@ export class ChatServiceImpl implements ChatService {
         return await this.repository.findOneChatByUUID(uuid);
     }
 
-    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string, username?: string }): Promise<{ chat: Chat; messages: Array<Content>; }> {
+    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string, username?: string,  model?: ModelEnum }): Promise<{ chat: Chat; messages: Array<Content>; }> {
         let userId: number | undefined;
         let chat: Chat
         if (data.userUUID) {
@@ -57,13 +57,13 @@ export class ChatServiceImpl implements ChatService {
             {
                 chatId: chat.id,
                 content: data.prompt,
-                model: ModelEnum.GEMINI,
+                model: data.model || ModelEnum.GEMINI,
                 role: Role.USER,
             },
             {
                 chatId: chat.id,
                 content: response.response,
-                model: ModelEnum.GEMINI,
+                model: data.model || ModelEnum.GEMINI,
                 role: Role.MODEL,
             }
         ];

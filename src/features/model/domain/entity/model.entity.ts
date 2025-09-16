@@ -2,7 +2,8 @@
 export enum ModelEnum {
     GPT = "GPT",
     GEMINI = "GEMINI",
-    CLAUDE = "CLAUDE"
+    CLAUDE = "CLAUDE",
+    OLLAMA = "OLLAMA"
 }
 export interface ModelType{
     baseURL: string

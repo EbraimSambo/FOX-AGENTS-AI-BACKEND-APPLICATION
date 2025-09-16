@@ -37,7 +37,8 @@ export class ChatController {
             chatUUID: uuid,
             prompt: body.prompt,
             userUUID,
-            username: userName
+            username: userName,
+            model: body.model
         })
     }
 

@@ -3,7 +3,7 @@ import { userTable } from "../user/user.schema";
 import { chatsTable } from "../chat/chat.schema";
 
 export const messageRoleEnum = pgEnum('message_role', ['MODEL', 'USER', 'SYSTEM']);
-export const typeModelEnum = pgEnum('model_enum', ['GPT', 'CLAUDE', 'GEMINI']);
+export const typeModelEnum = pgEnum('model_enum', ['GPT', 'CLAUDE', 'GEMINI','OLLAMA']);
 
 export const messagesTable = pgTable('messages', {
     id: serial('id').primaryKey(),
