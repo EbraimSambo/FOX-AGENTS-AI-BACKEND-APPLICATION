@@ -5,7 +5,6 @@ import { ChatRepository } from '../../domain/repository/chat.repository';
 import { ModelService } from 'src/features/model/domain/services/model-service';
 import { ModelEnum } from 'src/features/model/domain/entity/model.entity';
 import { DataPagination, Pagination } from 'src/shared/domain/pagination.core';
-import { User } from 'src/features/user/domain/entity/user.entity';
 
 @Injectable()
 export class ChatServiceImpl implements ChatService {
@@ -30,8 +29,9 @@ export class ChatServiceImpl implements ChatService {
         const existingChat = await this.repository.findOneChatByUUID(data.chatUUID);
 
         if (!existingChat) {
+            const titleChat =  await this.modelService.generateTitle(data.prompt)
             chat = await this.repository.createChat({
-                title: "Vamos a isso",
+                title: titleChat,
                 uuid: data.chatUUID,
                 userId
             });

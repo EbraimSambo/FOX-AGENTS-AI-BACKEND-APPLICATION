@@ -1,4 +1,4 @@
-import { ModelEnum, ModelType } from "../../entity/model.entity";
+import { ModelEnum } from "../../entity/model.entity";
 
 export interface ModelData{
     model: ModelEnum
