@@ -98,7 +98,8 @@ export class ChatServiceImpl implements ChatService {
 
         return await this.repository.findAllchats({
             ...data,
-            userId: user.id
+            userId: user.id,
+            name: data.name
         })
     }
 }
