@@ -100,7 +100,7 @@ export class ChatRepositoryImpl implements ChatRepository {
                     limit,
                     offset
                 }),
-                tx.select({ count: sql<number>`count(*)` }).from(messagesTable).where(and(
+                tx.select({ count: sql<number>`count(*)` }).from(chatsTable).where(and(
                     eq(chatsTable.userId, userId)
                 )).then(res => Number(res[0].count))
             ])
