@@ -95,7 +95,15 @@ export class ChatServiceImpl implements ChatService {
 
     async findAllchats(data: { pagination: DataPagination; userUUID: string; name?: string; }): Promise<Pagination<Chat>> {
         const user = await this.repository.getUser(data.userUUID)
-        if(!user) throw new NotFoundException("USER NOT FOUND");
+        if(!user) return {
+            isHasPage: false,
+            items: [],
+            nextPage: null,
+            page: 1,
+            prevPage: null,
+            totalElements: 0,
+            totalPages: 1
+        };
 
         return await this.repository.findAllchats({
             ...data,
