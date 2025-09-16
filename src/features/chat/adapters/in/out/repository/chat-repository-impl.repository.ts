@@ -96,11 +96,13 @@ export class ChatRepositoryImpl implements ChatRepository {
                         eq(elements.userId, userId),
                         data.name ? sql`LOWER(${elements.title}) LIKE LOWER(${`%${data.name}%`})` : undefined
                     ),
+                    orderBy: (fields, {desc}) =>desc(fields.createdAt),
                     limit,
                     offset
                 }),
                 tx.select({ count: sql<number>`count(*)` }).from(chatsTable).where(and(
-                    eq(chatsTable.userId, userId)
+                    eq(chatsTable.userId, userId),
+                     data.name ? sql`LOWER(${chatsTable.title}) LIKE LOWER(${`%${data.name}%`})` : undefined
                 )).then(res => Number(res[0].count))
             ])
 
