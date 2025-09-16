@@ -125,7 +125,7 @@ export class ChatRepositoryImpl implements ChatRepository {
                     eq(fields.uuid, uuid)
                 )
             },
-        }) as User || null
+        }) as User
     }
 
    async  createtUser(uuid: string): Promise<User> {
