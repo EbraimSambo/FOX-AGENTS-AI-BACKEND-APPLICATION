@@ -1,10 +1,10 @@
 import { ModelEnum } from "src/features/model/domain/entity/model.entity"
 
-export enum Role{
+export enum Role {
     USER = "USER",
     MODEL = "MODEL"
 }
-export class Content{
+export class Content {
     uuid: string
     content: string
     model: ModelEnum
@@ -13,9 +13,13 @@ export class Content{
     userId?: number
     createdAt: Date
     updatedAt: Date
+    attachments: Array<{
+        url: string,
+        type: string
+    }>
 }
 
-export class Chat{
+export class Chat {
     uuid: string
     id: number
     tittle?: string

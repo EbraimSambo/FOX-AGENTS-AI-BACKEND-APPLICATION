@@ -22,7 +22,12 @@ export class ChatServiceImpl implements ChatService {
         prompt: string; 
         userUUID?: string; 
         username?: string; 
-        model?: ModelEnum 
+        model?: ModelEnum ,
+        files: Express.Multer.File[],
+        attachments: Array<{
+            url: string,
+            type: string
+        }>
     }): Promise<{ chat: Chat; messages: Array<Content>; }> {
         let userId: number | undefined;
         let chat: Chat;
@@ -67,8 +72,9 @@ export class ChatServiceImpl implements ChatService {
 
         const response = await this.modelService.generateResponse({
             messages: formattedChatHistory,
-            model: data.model || ModelEnum.GEMINI,
-            username: data.username
+            model: ModelEnum.GEMINI,
+            username: data.username,
+            files: data.files
         });
 
         const aiMessageData: Omit<Content, "uuid"| "createdAt"|"updatedAt">[] = [
@@ -77,12 +83,14 @@ export class ChatServiceImpl implements ChatService {
                 content: data.prompt,
                 model: data.model || ModelEnum.GEMINI,
                 role: Role.USER,
+                attachments:  data.attachments
             },
             {
                 chatId: chat.id,
                 content: response.response,
                 model: data.model || ModelEnum.GEMINI,
                 role: Role.MODEL,
+                attachments: data.attachments
             }
         ];
 

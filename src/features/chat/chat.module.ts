@@ -6,11 +6,13 @@ import { ChatRepository } from './domain/repository/chat.repository';
 import { ChatServiceImpl } from './application/services/chat-impl.service';
 import { ChatService } from './domain/service/chat.service';
 import { ModelModule } from '../model/model.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
     imports: [
         DatabaseModule,
-        ModelModule
+        ModelModule,
+        UploadModule
     ],
     controllers: [
         ChatController,

@@ -10,6 +10,11 @@ export abstract class ChatService {
         userUUID?: string,
         username?: string
         model?: ModelEnum
+        files: Express.Multer.File[],
+        attachments: Array<{
+            url: string,
+            type: string
+        }>
     }
     ): Promise<{
         chat: Chat

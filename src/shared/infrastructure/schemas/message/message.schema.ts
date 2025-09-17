@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgEnum, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { userTable } from "../user/user.schema";
 import { chatsTable } from "../chat/chat.schema";
 
@@ -18,5 +18,9 @@ export const messagesTable = pgTable('messages', {
     updatedAt: timestamp('updated_at')
         .notNull()
         .defaultNow(),
+    attachments: jsonb("attachments").$type<Array<{
+        url: string,
+        type: string
+    }>>().default([]),
     chatId: integer('chat_id').notNull().references(() => chatsTable.id),
 });
