@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpException, HttpStatus, Param, Post, Query, Req } from '@nestjs/common';
 import { ChatService } from 'src/features/chat/domain/service/chat.service';
 import { ChatFlowDTo } from './dto/flow-chat.dto';
+import { Request } from 'express';
 
 @Controller("chats")
 export class ChatController {
@@ -27,19 +28,40 @@ export class ChatController {
     }
 
     @Post("/:uuid")
-    async flow(
-        @Body() body: ChatFlowDTo,
-        @Param("uuid") uuid: string,
-        @Headers("user-x-uuid") userUUID?: string,
-        @Headers("user-x-name") userName?: string,
+    async chatFlow(
+      @Body() body: ChatFlowDTo,
+      @Param("uuid") uuid: string,
+      @Headers("user-x-uuid") userUUID?: string,
+      @Headers("user-x-name") userName?: string,
+      @Req() req?: Request, // Adicionar o Request para acessar o abort signal
     ) {
+      // Criar um AbortController para esta requisição
+      const abortController = new AbortController();
+      
+      // Escutar o evento de abort da requisição do cliente
+      req?.on('close', () => {
+        if (!req.complete) {
+          console.log(`Requisição abortada pelo cliente: ${uuid}`);
+          abortController.abort();
+        }
+      });
+    
+      try {
         return await this.chatService.chatFlow({
-            chatUUID: uuid,
-            prompt: body.prompt,
-            userUUID,
-            username: userName,
-            model: body.model
-        })
+          chatUUID: uuid,
+          prompt: body.prompt,
+          userUUID,
+          username: userName,
+          model: body.model,
+          abortSignal: abortController.signal // Passar o signal para o service
+        });
+      } catch (error) {
+        // Se a operação foi abortada, retornar um erro específico
+        if (error.name === 'AbortError') {
+          throw new HttpException('Request aborted', HttpStatus.REQUEST_TIMEOUT);
+        }
+        throw error;
+      }
     }
 
 

@@ -17,82 +17,120 @@ export class ChatServiceImpl implements ChatService {
         return await this.repository.findOneChatByUUID(uuid);
     }
 
-    async chatFlow(data: { 
-        chatUUID: string; 
-        prompt: string; 
-        userUUID?: string; 
-        username?: string; 
-        model?: ModelEnum 
-    }): Promise<{ chat: Chat; messages: Array<Content>; }> {
+    async chatFlow(data: {
+        chatUUID: string;
+        prompt: string;
+        userUUID?: string;
+        username?: string;
+        model?: ModelEnum;
+        abortSignal?: AbortSignal; // Novo parâmetro opcional
+      }): Promise<{ chat: Chat; messages: Array<Content>; }> {
         let userId: number | undefined;
         let chat: Chat;
-
-        if (data.userUUID) {
-            const user = await this.repository.getUser(data.userUUID)
-                ?? await this.repository.createtUser(data.userUUID);
-            userId = user.id;
+      
+        // Verificar se a operação foi abortada antes de continuar
+        if (data.abortSignal?.aborted) {
+          throw new Error('Request aborted');
         }
-
+      
+        if (data.userUUID) {
+          const user = await this.repository.getUser(data.userUUID)
+            ?? await this.repository.createtUser(data.userUUID);
+          userId = user.id;
+        }
+      
+        // Verificar abort novamente
+        if (data.abortSignal?.aborted) {
+          throw new Error('Request aborted');
+        }
+      
         const existingChat = await this.repository.findOneChatByUUID(data.chatUUID);
         if (!existingChat) {
-            const titleChat = await this.modelService.generateTitle(data.prompt);
-            chat = await this.repository.createChat({
-                title: titleChat,
-                uuid: data.chatUUID,
-                userId
-            });
+          // Passar abortSignal para operações que podem demorar
+          const titleChat = await this.modelService.generateTitle(
+            data.prompt, 
+            data.abortSignal
+          );
+          
+          // Verificar abort após operação custosa
+          if (data.abortSignal?.aborted) {
+            throw new Error('Request aborted');
+          }
+      
+          chat = await this.repository.createChat({
+            title: titleChat,
+            uuid: data.chatUUID,
+            userId
+          });
         } else {
-            chat = existingChat;
+          chat = existingChat;
         }
-
+      
         // Busca histórico de mensagens
         const messages = await this.repository.findAllMessagesByChatIdAndUserId(chat.id);
-        
+      
+        // Verificar abort antes da operação mais custosa
+        if (data.abortSignal?.aborted) {
+          throw new Error('Request aborted');
+        }
+      
         // Organiza mensagens em ordem cronológica (mais antigas primeiro)
         messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
+      
         // Formata histórico para o modelo
         const formattedChatHistory = messages.map(msg => ({
-            role: msg.role === Role.USER ? 'user' as const : 'assistant' as const,
-            content: msg.content
+          role: msg.role === Role.USER ? 'user' as const : 'assistant' as const,
+          content: msg.content
         }));
-
+      
         // Adiciona a nova mensagem do usuário
-        formattedChatHistory.push({ 
-            content: data.prompt, 
-            role: "user" as const 
+        formattedChatHistory.push({
+          content: data.prompt,
+          role: "user" as const
         });
-
+      
         console.log('Histórico formatado:', JSON.stringify(formattedChatHistory, null, 2));
-
+      
+        // Verificar abort antes da chamada para o modelo (operação mais custosa)
+        if (data.abortSignal?.aborted) {
+          throw new Error('Request aborted');
+        }
+      
+        // Passar abortSignal para o modelo
         const response = await this.modelService.generateResponse({
-            messages: formattedChatHistory,
-            model: data.model || ModelEnum.GEMINI,
-            username: data.username
+          messages: formattedChatHistory,
+          model: data.model || ModelEnum.GEMINI,
+          username: data.username,
+          abortSignal: data.abortSignal // Passar o signal para o modelo
         });
-
+      
+        // Verificar abort após resposta do modelo
+        if (data.abortSignal?.aborted) {
+          throw new Error('Request aborted');
+        }
+      
         const aiMessageData: Omit<Content, "uuid"| "createdAt"|"updatedAt">[] = [
-            {
-                chatId: chat.id,
-                content: data.prompt,
-                model: data.model || ModelEnum.GEMINI,
-                role: Role.USER,
-            },
-            {
-                chatId: chat.id,
-                content: response.response,
-                model: data.model || ModelEnum.GEMINI,
-                role: Role.MODEL,
-            }
+          {
+            chatId: chat.id,
+            content: data.prompt,
+            model: data.model || ModelEnum.GEMINI,
+            role: Role.USER,
+          },
+          {
+            chatId: chat.id,
+            content: response.response,
+            model: data.model || ModelEnum.GEMINI,
+            role: Role.MODEL,
+          }
         ];
-
+      
         const createMessages = await this.repository.flowChat({
-            chat,
-            messages: [...aiMessageData]
+          chat,
+          messages: [...aiMessageData]
         });
-
+      
         return createMessages;
-    }
+      }
 
     async findAllMessages(data: { pagination: DataPagination; chatUUID: string; }): Promise<Pagination<Content>> {
         const chat = await this.findOneChatByUUID(data.chatUUID);

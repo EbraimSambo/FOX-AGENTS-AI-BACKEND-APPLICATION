@@ -7,4 +7,5 @@ export interface ModelData {
         role: "user" | "assistant"; // Mudei de "system" para "assistant"
     }>;
     username?: string;
+     abortSignal?: AbortSignal
 }

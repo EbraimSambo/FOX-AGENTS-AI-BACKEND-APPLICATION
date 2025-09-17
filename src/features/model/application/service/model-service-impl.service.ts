@@ -4,7 +4,6 @@ import { ModelFactory } from '../../infrastructure/model.builder';
 import { ModelData } from '../../domain/core/intrafces/model';
 import { getValueModel } from '../../infrastructure/get-model';
 import { ModelEnum } from '../../domain/entity/model.entity';
-import { ChatCompletionMessageParam } from 'openai/resources/index';
 
 @Injectable()
 export class ModelServiceImpl implements ModelService {
@@ -45,9 +44,60 @@ ${knownUserInstruction}
 Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents e o contexto da conversa.`;
     }
 
+    // Função auxiliar para verificar se a operação foi abortada
+    private checkAborted(abortSignal?: AbortSignal): void {
+        if (abortSignal?.aborted) {
+            const error = new Error('Request aborted');
+            error.name = 'AbortError';
+            throw error;
+        }
+    }
 
-    async generateResponse(data: ModelData) {
+    // Função auxiliar para criar uma Promise que pode ser abortada
+    private createAbortablePromise<T>(
+        promise: Promise<T>, 
+        abortSignal?: AbortSignal
+    ): Promise<T> {
+        if (!abortSignal) {
+            return promise;
+        }
+
+        return new Promise<T>((resolve, reject) => {
+            // Se já foi abortado, rejeitar imediatamente
+            if (abortSignal.aborted) {
+                const error = new Error('Request aborted');
+                error.name = 'AbortError';
+                reject(error);
+                return;
+            }
+
+            // Configurar listener para abort
+            const onAbort = () => {
+                const error = new Error('Request aborted');
+                error.name = 'AbortError';
+                reject(error);
+            };
+
+            abortSignal.addEventListener('abort', onAbort);
+
+            // Executar a promise original
+            promise
+                .then(result => {
+                    abortSignal.removeEventListener('abort', onAbort);
+                    resolve(result);
+                })
+                .catch(error => {
+                    abortSignal.removeEventListener('abort', onAbort);
+                    reject(error);
+                });
+        });
+    }
+
+    async generateResponse(data: ModelData & { abortSignal?: AbortSignal }) {
         console.log('Dados recebidos:', JSON.stringify(data, null, 2));
+        
+        // Verificar se foi abortado antes de começar
+        this.checkAborted(data.abortSignal);
         
         const values = getValueModel(data.model);
         const model = ModelFactory.builder({
@@ -61,6 +111,9 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
         console.log(`Conversa ${hasHistory ? 'com' : 'sem'} histórico (${data.messages.length} mensagens)`);
 
         try {
+            // Verificar abort antes de processar mensagens
+            this.checkAborted(data.abortSignal);
+
             // Converte mensagens para o formato correto do modelo
             const modelMessages = [
                 {
@@ -75,12 +128,22 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
             console.log('Mensagens enviadas para o modelo:', JSON.stringify(modelMessages, null, 2));
 
-            const completion = await model.chat.completions.create({
+            // Verificar abort antes da chamada para o modelo
+            this.checkAborted(data.abortSignal);
+
+            // Criar a promise da chamada ao modelo
+            const modelPromise = model.chat.completions.create({
                 messages: modelMessages as any,
                 model: values.value,
                 temperature: 0.7,
                 max_tokens: 1000,
             });
+
+            // Tornar a promise abortável
+            const completion = await this.createAbortablePromise(modelPromise, data.abortSignal);
+
+            // Verificar abort após receber a resposta
+            this.checkAborted(data.abortSignal);
 
             let response = completion.choices[0].message.content as string;
 
@@ -88,6 +151,13 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
                 response: response,
             };
         } catch (error) {
+            // Se foi um erro de abort, propagar como AbortError
+            if (error.name === 'AbortError' || data.abortSignal?.aborted) {
+                const abortError = new Error('Request aborted');
+                abortError.name = 'AbortError';
+                throw abortError;
+            }
+
             console.error('Erro ao gerar resposta:', error);
             return {
                 response: "Desculpe, tive um problema técnico. Como Fox Agents, estou aqui para ajudá-lo. Pode tentar novamente?",
@@ -95,7 +165,10 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
         }
     }
 
-    async generateTitle(prompt: string) {
+    async generateTitle(prompt: string, abortSignal?: AbortSignal) {
+        // Verificar se foi abortado antes de começar
+        this.checkAborted(abortSignal);
+
         const values = getValueModel(ModelEnum.GEMINI);
         const model = ModelFactory.builder({
             apiKey: values.apiKey,
@@ -103,7 +176,11 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
         });
 
         try {
-            const completion = await model.chat.completions.create({
+            // Verificar abort antes da chamada
+            this.checkAborted(abortSignal);
+
+            // Criar a promise da chamada ao modelo
+            const titlePromise = model.chat.completions.create({
                 messages: [
                     {
                         role: "system",
@@ -122,6 +199,12 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
                 max_tokens: 50,
             });
 
+            // Tornar a promise abortável
+            const completion = await this.createAbortablePromise(titlePromise, abortSignal);
+
+            // Verificar abort após receber a resposta
+            this.checkAborted(abortSignal);
+
             let title = completion.choices[0].message.content as string;
             title = title.replace(/['"]/g, '').trim();
 
@@ -131,6 +214,13 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
             return title || 'Nova Conversa';
         } catch (error) {
+            // Se foi um erro de abort, propagar como AbortError
+            if (error.name === 'AbortError' || abortSignal?.aborted) {
+                const abortError = new Error('Request aborted');
+                abortError.name = 'AbortError';
+                throw abortError;
+            }
+
             console.error('Erro ao gerar título:', error);
             return 'Nova Conversa';
         }

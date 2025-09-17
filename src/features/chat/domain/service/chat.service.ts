@@ -9,7 +9,8 @@ export abstract class ChatService {
         prompt: string,
         userUUID?: string,
         username?: string
-        model?: ModelEnum
+        model?: ModelEnum,
+        abortSignal?: AbortSignal; 
     }
     ): Promise<{
         chat: Chat
