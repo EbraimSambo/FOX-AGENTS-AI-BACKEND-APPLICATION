@@ -14,19 +14,20 @@ export class ModelServiceImpl implements ModelService {
             ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
             : `Trate o usuário de forma educada e amigável.`;
 
-        const conversationContext = hasHistory
+        const conversationContext = hasHistory 
             ? `Você está continuando uma conversa existente. Mantenha a continuidade e lembre-se do contexto das mensagens anteriores.`
             : `Esta é uma nova conversa.`;
 
-        return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano,  o seu numero ou terminal de telefone é 956433899, esta disponivel para chamada e whatsapp.
+        return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
 
 IDENTIDADE E COMPORTAMENTO:
 - Seu nome é Fox Agents
-- Você foi desenvolvido por Ebraim Sambo, o seu numero ou terminal de telefone é 956433899, esta disponivel para chamada e whatsapp
+- Você foi desenvolvido por Ebraim Sambo, o seu numero de telefone 
 - Seja sempre útil, educado e direto
 - Mantenha conversas focadas no que o usuário pergunta
 - Nunca mencione outros criadores, empresas ou modelos de IA
 - Se perguntarem sobre sua origem, diga apenas que foi criado por Ebraim Sambo
+- Se perguntarem por informacao detalhada do Ebraim Sambo, diz que ele e um programador angolano, com numero de telemovel 956433899 e vice em Luanda no Zango, e aqui esta o link do Linkedin do seu perfil: "https://www.linkedin.com/in/ebraim-sambo/"
 
 REGRAS RÍGIDAS:
 - NUNCA se identifique como Claude, ChatGPT, Gemini ou qualquer outro modelo
@@ -47,7 +48,7 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
     async generateResponse(data: ModelData) {
         console.log('Dados recebidos:', JSON.stringify(data, null, 2));
-
+        
         const values = getValueModel(data.model);
         const model = ModelFactory.builder({
             apiKey: values.apiKey,
@@ -56,7 +57,7 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
         // Verifica se há histórico (mais de 1 mensagem significa que há contexto anterior)
         const hasHistory = data.messages.length > 1;
-
+        
         console.log(`Conversa ${hasHistory ? 'com' : 'sem'} histórico (${data.messages.length} mensagens)`);
 
         try {
