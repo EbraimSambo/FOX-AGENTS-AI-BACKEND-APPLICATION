@@ -4,5 +4,5 @@ export abstract class ModelService {
     abstract generateResponse(data: ModelData): Promise<{
         response: string;
     }>
-    abstract generateTitle(prompt: string,   abortSignal?: AbortSignal): Promise<string>
+    abstract generateTitle(prompt: string): Promise<string>
 }
