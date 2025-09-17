@@ -44,23 +44,6 @@ ${knownUserInstruction}
 Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents e o contexto da conversa.`;
     }
 
-    private validateResponse(response: string): string {
-        const forbiddenTerms = [
-            'claude', 'anthropic', 'openai', 'chatgpt', 'google', 'gemini',
-            'modelo de linguagem', 'llm', 'inteligência artificial da',
-            'fui criado pela', 'desenvolvido pela', 'treinado pela'
-        ];
-
-        const lowerResponse = response.toLowerCase();
-        const foundForbidden = forbiddenTerms.find(term => lowerResponse.includes(term));
-
-        if (foundForbidden) {
-            console.warn(`Resposta filtrada - termo encontrado: ${foundForbidden}`);
-            return "Desculpe, houve um problema com minha resposta anterior. Como Fox Agents, estou aqui para ajudá-lo. Pode reformular sua pergunta para que eu possa oferecer uma resposta mais adequada?";
-        }
-
-        return response;
-    }
 
     async generateResponse(data: ModelData) {
         console.log('Dados recebidos:', JSON.stringify(data, null, 2));
@@ -99,7 +82,6 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
             });
 
             let response = completion.choices[0].message.content as string;
-            response = this.validateResponse(response);
 
             return {
                 response: response,
