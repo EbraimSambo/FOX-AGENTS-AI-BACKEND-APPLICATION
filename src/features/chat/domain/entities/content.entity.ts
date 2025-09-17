@@ -11,6 +11,8 @@ export class Content{
     role: Role
     chatId: number
     userId?: number
+    createdAt: Date
+    updatedAt: Date
 }
 
 export class Chat{

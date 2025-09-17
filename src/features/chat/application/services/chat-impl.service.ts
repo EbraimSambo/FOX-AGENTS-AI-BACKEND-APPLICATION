@@ -17,9 +17,16 @@ export class ChatServiceImpl implements ChatService {
         return await this.repository.findOneChatByUUID(uuid);
     }
 
-    async chatFlow(data: { chatUUID: string; prompt: string; userUUID?: string, username?: string,  model?: ModelEnum }): Promise<{ chat: Chat; messages: Array<Content>; }> {
+    async chatFlow(data: { 
+        chatUUID: string; 
+        prompt: string; 
+        userUUID?: string; 
+        username?: string; 
+        model?: ModelEnum 
+    }): Promise<{ chat: Chat; messages: Array<Content>; }> {
         let userId: number | undefined;
-        let chat: Chat
+        let chat: Chat;
+
         if (data.userUUID) {
             const user = await this.repository.getUser(data.userUUID)
                 ?? await this.repository.createtUser(data.userUUID);
@@ -27,9 +34,8 @@ export class ChatServiceImpl implements ChatService {
         }
 
         const existingChat = await this.repository.findOneChatByUUID(data.chatUUID);
-
         if (!existingChat) {
-            const titleChat =  await this.modelService.generateTitle(data.prompt)
+            const titleChat = await this.modelService.generateTitle(data.prompt);
             chat = await this.repository.createChat({
                 title: titleChat,
                 uuid: data.chatUUID,
@@ -39,22 +45,33 @@ export class ChatServiceImpl implements ChatService {
             chat = existingChat;
         }
 
-        const messages = await this.repository.findAllMessagesByChatIdAndUserId(chat.id)
-        messages.reverse()
+        // Busca histórico de mensagens
+        const messages = await this.repository.findAllMessagesByChatIdAndUserId(chat.id);
+        
+        // Organiza mensagens em ordem cronológica (mais antigas primeiro)
+        messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+        // Formata histórico para o modelo
         const formattedChatHistory = messages.map(msg => ({
-            role: msg.role === Role.USER ? 'user' : 'system' as "user",
+            role: msg.role === Role.USER ? 'user' as const : 'assistant' as const,
             content: msg.content
         }));
 
-        formattedChatHistory.push({ content: data.prompt, role: "user" });
-        formattedChatHistory.reverse();
-        const response = await this.modelService.generateResponse({
-            messages: [...formattedChatHistory],
-            model: ModelEnum.GEMINI,
-            username: data.username
-        })
+        // Adiciona a nova mensagem do usuário
+        formattedChatHistory.push({ 
+            content: data.prompt, 
+            role: "user" as const 
+        });
 
-        const aiMessageData: Omit<Content, "uuid">[] = [
+        console.log('Histórico formatado:', JSON.stringify(formattedChatHistory, null, 2));
+
+        const response = await this.modelService.generateResponse({
+            messages: formattedChatHistory,
+            model: data.model || ModelEnum.GEMINI,
+            username: data.username
+        });
+
+        const aiMessageData: Omit<Content, "uuid"| "createdAt"|"updatedAt">[] = [
             {
                 chatId: chat.id,
                 content: data.prompt,
@@ -72,17 +89,18 @@ export class ChatServiceImpl implements ChatService {
         const createMessages = await this.repository.flowChat({
             chat,
             messages: [...aiMessageData]
-        })
+        });
+
         return createMessages;
     }
 
     async findAllMessages(data: { pagination: DataPagination; chatUUID: string; }): Promise<Pagination<Content>> {
-        const chat = await this.findOneChatByUUID(data.chatUUID)
+        const chat = await this.findOneChatByUUID(data.chatUUID);
         if (chat) return await this.repository.findAllMessages({
             ...data,
             chatId: chat.id
-        })
-
+        });
+        
         return {
             isHasPage: false,
             items: [],
@@ -91,12 +109,12 @@ export class ChatServiceImpl implements ChatService {
             prevPage: null,
             totalElements: 0,
             totalPages: 1
-        }
+        };
     }
 
     async findAllchats(data: { pagination: DataPagination; userUUID: string; name?: string; }): Promise<Pagination<Chat>> {
-        const user = await this.repository.getUser(data.userUUID)
-        if(!user) return {
+        const user = await this.repository.getUser(data.userUUID);
+        if (!user) return {
             isHasPage: false,
             items: [],
             nextPage: null,
@@ -105,10 +123,10 @@ export class ChatServiceImpl implements ChatService {
             totalElements: 0,
             totalPages: 1
         };
-
+        
         return await this.repository.findAllchats({
             ...data,
             userId: user.id,
-        })
+        });
     }
 }

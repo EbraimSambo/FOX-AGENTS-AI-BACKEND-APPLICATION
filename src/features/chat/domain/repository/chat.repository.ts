@@ -5,7 +5,7 @@ import { User } from "src/features/user/domain/entity/user.entity";
 export abstract class ChatRepository {
     abstract findOneChatByUUID(uuid: string): Promise<Chat | null>
     abstract flowChat(data:{
-        chat: Chat, messages: Array<Omit<Content, "uuid">>,
+        chat: Chat, messages: Array<Omit<Content, "uuid"| "createdAt"|"updatedAt">>,
     }
     ): Promise<{
         chat: Chat

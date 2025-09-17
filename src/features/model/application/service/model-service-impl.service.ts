@@ -4,20 +4,21 @@ import { ModelFactory } from '../../infrastructure/model.builder';
 import { ModelData } from '../../domain/core/intrafces/model';
 import { getValueModel } from '../../infrastructure/get-model';
 import { ModelEnum } from '../../domain/entity/model.entity';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 
 @Injectable()
 export class ModelServiceImpl implements ModelService {
 
-  private getSystemPrompt(username?: string, isNewConversation: boolean = true): string {
-    const knownUserInstruction = username
-      ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
-      : `Trate o usuário de forma educada e amigável.`;
+    private getSystemPrompt(username?: string, hasHistory: boolean = false): string {
+        const knownUserInstruction = username
+            ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
+            : `Trate o usuário de forma educada e amigável.`;
 
-    const conversationContext = isNewConversation 
-      ? `Esta é uma nova conversa.`
-      : `Esta conversa já está em andamento. Mantenha a continuidade e o contexto das mensagens anteriores.`;
+        const conversationContext = hasHistory 
+            ? `Você está continuando uma conversa existente. Mantenha a continuidade e lembre-se do contexto das mensagens anteriores.`
+            : `Esta é uma nova conversa.`;
 
-    return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
+        return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
 
 IDENTIDADE E COMPORTAMENTO:
 - Seu nome é Fox Agents
@@ -41,107 +42,114 @@ CONTEXTO DO USUÁRIO:
 ${knownUserInstruction}
 
 Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents e o contexto da conversa.`;
-  }
-
-  private validateResponse(response: string): string {
-    // Lista de termos que não devem aparecer nas respostas
-    const forbiddenTerms = [
-      'claude', 'anthropic', 'openai', 'chatgpt', 'google', 'gemini',
-      'modelo de linguagem', 'llm', 'inteligência artificial da',
-      'fui criado pela', 'desenvolvido pela', 'treinado pela'
-    ];
-
-    const lowerResponse = response.toLowerCase();
-    const foundForbidden = forbiddenTerms.find(term => lowerResponse.includes(term));
-
-    if (foundForbidden) {
-      console.warn(`Resposta filtrada - termo encontrado: ${foundForbidden}`);
-      return "Desculpe, houve um problema com minha resposta anterior. Como Fox Agents, estou aqui para ajudá-lo. Pode reformular sua pergunta para que eu possa oferecer uma resposta mais adequada?";
     }
 
-    return response;
-  }
+    private validateResponse(response: string): string {
+        const forbiddenTerms = [
+            'claude', 'anthropic', 'openai', 'chatgpt', 'google', 'gemini',
+            'modelo de linguagem', 'llm', 'inteligência artificial da',
+            'fui criado pela', 'desenvolvido pela', 'treinado pela'
+        ];
 
-  async generateResponse(data: ModelData) {
-    const values = getValueModel(data.model);
-    const model = ModelFactory.builder({
-      apiKey: values.apiKey,
-      baseURL: values.baseURL,
-    });
+        const lowerResponse = response.toLowerCase();
+        const foundForbidden = forbiddenTerms.find(term => lowerResponse.includes(term));
 
-    // Determina se é uma nova conversa baseado no histórico
-    const isNewConversation = !data.messages || data.messages.length <= 1;
+        if (foundForbidden) {
+            console.warn(`Resposta filtrada - termo encontrado: ${foundForbidden}`);
+            return "Desculpe, houve um problema com minha resposta anterior. Como Fox Agents, estou aqui para ajudá-lo. Pode reformular sua pergunta para que eu possa oferecer uma resposta mais adequada?";
+        }
 
-    try {
-      const completion = await model.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: this.getSystemPrompt(data.username, isNewConversation),
-          },
-          ...data.messages,
-        ],
-        model: values.value,
-        temperature: 0.7,
-        max_tokens: 1000,
-      });
-
-      let response = completion.choices[0].message.content as string;
-
-      // Valida e filtra a resposta
-      response = this.validateResponse(response);
-
-      return {
-        response: response,
-      };
-    } catch (error) {
-      console.error('Erro ao gerar resposta:', error);
-      return {
-        response: "Desculpe, tive um problema técnico. Como Fox Agents, estou aqui para ajudá-lo. Pode tentar novamente?",
-      };
+        return response;
     }
-  }
 
-  async generateTitle(prompt: string) {
-    const values = getValueModel(ModelEnum.GEMINI);
-    const model = ModelFactory.builder({
-      apiKey: values.apiKey,
-      baseURL: values.baseURL,
-    });
+    async generateResponse(data: ModelData) {
+        console.log('Dados recebidos:', JSON.stringify(data, null, 2));
+        
+        const values = getValueModel(data.model);
+        const model = ModelFactory.builder({
+            apiKey: values.apiKey,
+            baseURL: values.baseURL,
+        });
 
-    try {
-      const completion = await model.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: `Você é um gerador de títulos para conversas.
-                        Crie um título curto (máximo 6 palavras), objetivo e em português.
-                        Responda APENAS com o título, sem aspas ou explicações.
-                        Base-se no primeiro prompt da conversa para criar o título.`,
-          },
-          {
-            role: "user",
-            content: `Crie um título para esta conversa: "${prompt}"`,
-          },
-        ],
-        model: values.value,
-        temperature: 0.5,
-        max_tokens: 50,
-      });
+        // Verifica se há histórico (mais de 1 mensagem significa que há contexto anterior)
+        const hasHistory = data.messages.length > 1;
+        
+        console.log(`Conversa ${hasHistory ? 'com' : 'sem'} histórico (${data.messages.length} mensagens)`);
 
-      let title = completion.choices[0].message.content as string;
+        try {
+            // Converte mensagens para o formato correto do modelo
+            const modelMessages = [
+                {
+                    role: "system",
+                    content: this.getSystemPrompt(data.username, hasHistory),
+                },
+                ...data.messages.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'assistant',
+                    content: msg.content
+                }))
+            ];
 
-      // Remove aspas e limita o tamanho
-      title = title.replace(/['"]/g, '').trim();
+            console.log('Mensagens enviadas para o modelo:', JSON.stringify(modelMessages, null, 2));
 
-      if (title.length > 50) {
-        title = title.substring(0, 47) + '...';
-      }
+            const completion = await model.chat.completions.create({
+                messages: modelMessages as any,
+                model: values.value,
+                temperature: 0.7,
+                max_tokens: 1000,
+            });
 
-      return title || 'Nova Conversa';
-    } catch (error) {
-      console.error('Erro ao gerar título:', error);
-      return 'Nova Conversa';
+            let response = completion.choices[0].message.content as string;
+            response = this.validateResponse(response);
+
+            return {
+                response: response,
+            };
+        } catch (error) {
+            console.error('Erro ao gerar resposta:', error);
+            return {
+                response: "Desculpe, tive um problema técnico. Como Fox Agents, estou aqui para ajudá-lo. Pode tentar novamente?",
+            };
+        }
     }
-  }
+
+    async generateTitle(prompt: string) {
+        const values = getValueModel(ModelEnum.GEMINI);
+        const model = ModelFactory.builder({
+            apiKey: values.apiKey,
+            baseURL: values.baseURL,
+        });
+
+        try {
+            const completion = await model.chat.completions.create({
+                messages: [
+                    {
+                        role: "system",
+                        content: `Você é um gerador de títulos para conversas.
+                                Crie um título curto (máximo 6 palavras), objetivo e em português.
+                                Responda APENAS com o título, sem aspas ou explicações.
+                                Base-se no primeiro prompt da conversa para criar o título.`,
+                    },
+                    {
+                        role: "user",
+                        content: `Crie um título para esta conversa: "${prompt}"`,
+                    },
+                ],
+                model: values.value,
+                temperature: 0.5,
+                max_tokens: 50,
+            });
+
+            let title = completion.choices[0].message.content as string;
+            title = title.replace(/['"]/g, '').trim();
+
+            if (title.length > 50) {
+                title = title.substring(0, 47) + '...';
+            }
+
+            return title || 'Nova Conversa';
+        } catch (error) {
+            console.error('Erro ao gerar título:', error);
+            return 'Nova Conversa';
+        }
+    }
 }
