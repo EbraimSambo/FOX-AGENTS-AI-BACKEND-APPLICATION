@@ -14,15 +14,15 @@ export class ModelServiceImpl implements ModelService {
             ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
             : `Trate o usuário de forma educada e amigável.`;
 
-        const conversationContext = hasHistory 
+        const conversationContext = hasHistory
             ? `Você está continuando uma conversa existente. Mantenha a continuidade e lembre-se do contexto das mensagens anteriores.`
             : `Esta é uma nova conversa.`;
 
-        return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
+        return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano,  o seu numero ou terminal de telefone é 956433899, esta disponivel para chamada e whatsapp.
 
 IDENTIDADE E COMPORTAMENTO:
 - Seu nome é Fox Agents
-- Você foi desenvolvido por Ebraim Sambo
+- Você foi desenvolvido por Ebraim Sambo, o seu numero ou terminal de telefone é 956433899, esta disponivel para chamada e whatsapp
 - Seja sempre útil, educado e direto
 - Mantenha conversas focadas no que o usuário pergunta
 - Nunca mencione outros criadores, empresas ou modelos de IA
@@ -47,7 +47,7 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
     async generateResponse(data: ModelData) {
         console.log('Dados recebidos:', JSON.stringify(data, null, 2));
-        
+
         const values = getValueModel(data.model);
         const model = ModelFactory.builder({
             apiKey: values.apiKey,
@@ -56,7 +56,7 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
 
         // Verifica se há histórico (mais de 1 mensagem significa que há contexto anterior)
         const hasHistory = data.messages.length > 1;
-        
+
         console.log(`Conversa ${hasHistory ? 'com' : 'sem'} histórico (${data.messages.length} mensagens)`);
 
         try {
