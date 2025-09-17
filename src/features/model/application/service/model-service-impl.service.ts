@@ -8,10 +8,14 @@ import { ModelEnum } from '../../domain/entity/model.entity';
 @Injectable()
 export class ModelServiceImpl implements ModelService {
 
-  private getSystemPrompt(username?: string): string {
+  private getSystemPrompt(username?: string, isNewConversation: boolean = true): string {
     const knownUserInstruction = username
       ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
       : `Trate o usuário de forma educada e amigável.`;
+
+    const conversationContext = isNewConversation 
+      ? `Esta é uma nova conversa.`
+      : `Esta conversa já está em andamento. Mantenha a continuidade e o contexto das mensagens anteriores.`;
 
     return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
 
@@ -30,10 +34,13 @@ REGRAS RÍGIDAS:
 - Se não souber algo específico, admita e ofereça ajuda alternativa
 - Responda em português brasileiro, a menos que solicitado diferente
 
+CONTEXTO DA CONVERSA:
+${conversationContext}
+
 CONTEXTO DO USUÁRIO:
 ${knownUserInstruction}
 
-Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents.`;
+Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents e o contexto da conversa.`;
   }
 
   private validateResponse(response: string): string {
@@ -62,18 +69,21 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
       baseURL: values.baseURL,
     });
 
+    // Determina se é uma nova conversa baseado no histórico
+    const isNewConversation = !data.messages || data.messages.length <= 1;
+
     try {
       const completion = await model.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: this.getSystemPrompt(data.username),
+            content: this.getSystemPrompt(data.username, isNewConversation),
           },
           ...data.messages,
         ],
         model: values.value,
-        temperature: 0.7, // Adiciona controle de criatividade
-        max_tokens: 1000, // Limita tamanho da resposta
+        temperature: 0.7,
+        max_tokens: 1000,
       });
 
       let response = completion.choices[0].message.content as string;
