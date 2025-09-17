@@ -8,14 +8,10 @@ import { ModelEnum } from '../../domain/entity/model.entity';
 @Injectable()
 export class ModelServiceImpl implements ModelService {
 
-  private getSystemPrompt(username?: string, hasHistory: boolean = false): string {
+  private getSystemPrompt(username?: string): string {
     const knownUserInstruction = username
       ? `O usuário se chama ${username}. Trate-o como alguém que você já conhece, usando o nome dele de forma natural quando apropriado.`
       : `Trate o usuário de forma educada e amigável.`;
-
-    const contextInstruction = hasHistory
-      ? `Esta é uma conversa contínua. Mantenha a consistência com as mensagens anteriores e lembre-se do contexto já estabelecido. Não cumprimente novamente se já foi feito anteriormente.`
-      : `Esta é uma nova conversa. Seja receptivo e educado.`;
 
     return `Você é Fox Agents, um assistente inteligente criado por Ebraim Sambo, programador angolano.
 
@@ -27,21 +23,17 @@ IDENTIDADE E COMPORTAMENTO:
 - Nunca mencione outros criadores, empresas ou modelos de IA
 - Se perguntarem sobre sua origem, diga apenas que foi criado por Ebraim Sambo
 
-CONTEXTO DA CONVERSA:
-${contextInstruction}
-
 REGRAS RÍGIDAS:
 - NUNCA se identifique como Claude, ChatGPT, Gemini ou qualquer outro modelo
 - NUNCA mencione Anthropic, OpenAI, Google ou outras empresas de IA
 - SEMPRE mantenha o foco na pergunta do usuário
 - Se não souber algo específico, admita e ofereça ajuda alternativa
 - Responda em português brasileiro, a menos que solicitado diferente
-- Mantenha coerência com mensagens anteriores nesta conversa
 
 CONTEXTO DO USUÁRIO:
 ${knownUserInstruction}
 
-Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents e o contexto da conversa.`;
+Agora responda à pergunta do usuário de forma direta e útil, mantendo sua identidade como Fox Agents.`;
   }
 
   private validateResponse(response: string): string {
@@ -63,25 +55,6 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
     return response;
   }
 
-  private processMessages(messages: any[]): any[] {
-    // Garante que as mensagens tenham o formato correto
-    return messages.map(msg => ({
-      role: msg.role === 'model' ? 'assistant' : msg.role, // Converte 'model' para 'assistant'
-      content: msg.content
-    }));
-  }
-
-  private limitMessageHistory(messages: any[], maxMessages: number = 20): any[] {
-    // Mantém apenas as últimas mensagens para evitar contexto muito longo
-    if (messages.length <= maxMessages) {
-      return messages;
-    }
-
-    // Sempre mantém a primeira mensagem se for importante
-    const recentMessages = messages.slice(-maxMessages);
-    return recentMessages;
-  }
-
   async generateResponse(data: ModelData) {
     const values = getValueModel(data.model);
     const model = ModelFactory.builder({
@@ -90,27 +63,17 @@ Agora responda à pergunta do usuário de forma direta e útil, mantendo sua ide
     });
 
     try {
-      // Processa e limita o histórico de mensagens
-      const processedMessages = this.processMessages(data.messages || []);
-      const limitedMessages = this.limitMessageHistory(processedMessages);
-      
-      // Detecta se há histórico da conversa
-      const hasHistory = limitedMessages.length > 0;
-
       const completion = await model.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: this.getSystemPrompt(data.username, hasHistory),
+            content: this.getSystemPrompt(data.username),
           },
-          ...limitedMessages,
+          ...data.messages,
         ],
         model: values.value,
-        temperature: 0.7,
-        max_tokens: 1000,
-        // Configurações adicionais para melhor continuidade
-        presence_penalty: 0.1, // Reduz repetições
-        frequency_penalty: 0.1, // Varia o vocabulário
+        temperature: 0.7, // Adiciona controle de criatividade
+        max_tokens: 1000, // Limita tamanho da resposta
       });
 
       let response = completion.choices[0].message.content as string;
